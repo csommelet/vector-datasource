@@ -1,4 +1,3 @@
-from itertools import izip
 import re
 
 
@@ -263,7 +262,7 @@ def deassoc(x):
     """
 
     pairs = [iter(x)] * 2
-    return dict(izip(*pairs))
+    return dict(zip(*pairs))
 
 
 # returns the min_zoom for the most important walking or cycling network

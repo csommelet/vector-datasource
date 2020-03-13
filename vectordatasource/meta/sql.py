@@ -1,9 +1,8 @@
 from vectordatasource.meta.python import parse_layers, output_kind, \
-        output_min_zoom, LayerParseResult, FunctionData
+    output_min_zoom, LayerParseResult, FunctionData
 import sys
 import ast
-from cStringIO import StringIO
-
+from io import StringIO
 
 LAYER_TABLES = {
     'boundaries': [
@@ -75,7 +74,6 @@ LAYER_TABLES = {
     ],
 }
 
-
 POLYGON_TABLES = [
     'planet_osm_polygon',
     'buffered_land',
@@ -97,7 +95,6 @@ POLYGON_TABLES = [
     'admin_areas',
 ]
 
-
 ADAPTOR_QUERY = """
 CREATE OR REPLACE FUNCTION mz_calculate_%(calc)s_%(layer)s(%(table)s)
 RETURNS %(return_type)s AS $$
@@ -113,85 +110,77 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 BOOL_OPS = {
     ast.And: "AND",
-    ast.Or:  "OR",
+    ast.Or: "OR",
 }
-
 
 CMP_OPS = {
-    ast.Eq:    "=",
+    ast.Eq: "=",
     ast.NotEq: "<>",
-    ast.In:    "IN",
-    ast.Is:    "IS",
-    ast.GtE:   ">=",
-    ast.LtE:   "<=",
+    ast.In: "IN",
+    ast.Is: "IS",
+    ast.GtE: ">=",
+    ast.LtE: "<=",
 }
-
 
 CMP_DEFAULTS = {
-    ast.Eq:    "FALSE",
+    ast.Eq: "FALSE",
     ast.NotEq: "TRUE",
-    ast.In:    "FALSE",
-    ast.Is:    "FALSE",
-    ast.GtE:   "FALSE",
-    ast.LtE:   "FALSE",
+    ast.In: "FALSE",
+    ast.Is: "FALSE",
+    ast.GtE: "FALSE",
+    ast.LtE: "FALSE",
 }
-
 
 UNARY_OPS = {
     ast.Not: "NOT ",
 }
 
-
 BINARY_OPS = {
-    ast.Add:  "+",
+    ast.Add: "+",
     ast.Mult: "*",
 }
 
-
 VALUES = {
-    'props':    'tags',
-    'None':     'NULL',
-    'volume':   'volume',
+    'props': 'tags',
+    'None': 'NULL',
+    'volume': 'volume',
     'way_area': 'way_area',
-    'shape':    'way',
-    'fid':      'fid',
-    'zoom':     'zoom',
+    'shape': 'way',
+    'fid': 'fid',
+    'zoom': 'zoom',
 }
-
 
 KNOWN_FUNCS = {
-    'mz_building_kind_detail':            'mz_building_kind_detail',
-    'mz_building_part_kind_detail':       'mz_building_part_kind_detail',
-    'trim_nz_sh':                         'trim_nz_sh',
-    'mz_get_rel_networks':                'mz_get_rel_networks',
-    'util.cycling_network':               'mz_cycling_network',
-    'util.calculate_way_area':            'way_area',
-    'util.calculate_volume':              'mz_calculate_building_volume',
-    'ST_GeometryType':                    'ST_GeometryType',
-    'util.calculate_1px_zoom':            'mz_one_pixel_zoom',
-    'min':                                'LEAST',
-    'max':                                'GREATEST',
-    'mz_to_float_meters':                 'mz_to_float_meters',
+    'mz_building_kind_detail': 'mz_building_kind_detail',
+    'mz_building_part_kind_detail': 'mz_building_part_kind_detail',
+    'trim_nz_sh': 'trim_nz_sh',
+    'mz_get_rel_networks': 'mz_get_rel_networks',
+    'util.cycling_network': 'mz_cycling_network',
+    'util.calculate_way_area': 'way_area',
+    'util.calculate_volume': 'mz_calculate_building_volume',
+    'ST_GeometryType': 'ST_GeometryType',
+    'util.calculate_1px_zoom': 'mz_one_pixel_zoom',
+    'min': 'LEAST',
+    'max': 'GREATEST',
+    'mz_to_float_meters': 'mz_to_float_meters',
     'mz_get_min_zoom_highway_level_gate': 'mz_get_min_zoom_highway_level_gate',
-    'mz_calculate_path_major_route':      'mz_calculate_path_major_route',
-    'mz_calculate_ferry_level':           'mz_calculate_ferry_level',
-    'util.is_building':                   'mz_calculate_is_building_or_part',
-    'util.tag_str_to_bool':               'notimplemented',
-    'util.safe_int':                      'tz_safe_int',
-    'util.true_or_none':                  'notimplemented',
-    'tz_looks_like_service_area':         'tz_looks_like_service_area',
-    'tz_looks_like_rest_area':            'tz_looks_like_rest_area',
-    'tz_estimate_parking_capacity':       'tz_estimate_parking_capacity',
+    'mz_calculate_path_major_route': 'mz_calculate_path_major_route',
+    'mz_calculate_ferry_level': 'mz_calculate_ferry_level',
+    'util.is_building': 'mz_calculate_is_building_or_part',
+    'util.tag_str_to_bool': 'notimplemented',
+    'util.safe_int': 'tz_safe_int',
+    'util.true_or_none': 'notimplemented',
+    'tz_looks_like_service_area': 'tz_looks_like_service_area',
+    'tz_looks_like_rest_area': 'tz_looks_like_rest_area',
+    'tz_estimate_parking_capacity': 'tz_estimate_parking_capacity',
 }
-
 
 # this is a bit of a hack to force the type of expressions with least/greatest
 # in them to be of numeric type.
 FUNC_FORCE_TYPE = {
-    'LEAST':    float,
+    'LEAST': float,
     'GREATEST': float,
 }
-
 
 GLOBALS = [
     'way_area',
@@ -212,13 +201,13 @@ def instance_lookup(obj, mapping):
 
 def sql_type(expr):
     if isinstance(expr, ast.Name) and \
-       expr.id in ('volume'):
+            expr.id in ('volume'):
         return int
     if isinstance(expr, ast.Call) and \
-       isinstance(expr.func, ast.Attribute) and \
-       isinstance(expr.func.value, ast.Name) and \
-       expr.func.value.id == 'props' and \
-       expr.args[0].s in ('scalerank', 'min_zoom'):
+            isinstance(expr.func, ast.Attribute) and \
+            isinstance(expr.func.value, ast.Name) and \
+            expr.func.value.id == 'props' and \
+            expr.args[0].s in ('scalerank', 'min_zoom'):
         return float
     return str
 
@@ -240,6 +229,8 @@ def sql_as_json(d):
             s.write("\"%s\"" % v.s)
         elif isinstance(v, ast.Num):
             s.write("%d" % v.n)
+        elif isinstance(v, ast.NameConstant):
+            s.write("%d" % int(v.value))
         elif isinstance(v, ast.Name):
             if v.id == 'None':
                 s.write("null")
@@ -262,7 +253,7 @@ def fn_name(node):
     elif isinstance(node, ast.Attribute):
         assert isinstance(node.value, ast.Name)
         return node.value.id + "." + fn_name(node.attr)
-    elif isinstance(node, (str, unicode)):
+    elif isinstance(node, str):
         return node
     else:
         raise RuntimeError("Don't know how to make a function name from %r"
@@ -299,8 +290,8 @@ class SQLExpression(ast.NodeVisitor):
         # are treated the same way, but in SQL we have to use different
         # syntax to check if something is in a list or in an hstore.
         if len(cp.ops) == 1 and \
-           isinstance(cp.ops[0], ast.In) and \
-           isinstance(cp.comparators[0], ast.Name):
+                isinstance(cp.ops[0], ast.In) and \
+                isinstance(cp.comparators[0], ast.Name):
             self.visit(cp.comparators[0])
             self.buf.write(" ? ")
             self.visit(cp.left)
@@ -360,10 +351,16 @@ class SQLExpression(ast.NodeVisitor):
             else:
                 self.buf.write("%d" % n.n)
 
+    def visit_NameConstant(self, n):
+        if self.force_type == str:
+            self.buf.write("'%d'" % int(n.value))
+        else:
+            self.buf.write("%d" % int(n.value))
+
     def visit_Call(self, call):
         if isinstance(call.func, ast.Attribute) and \
-           isinstance(call.func.value, ast.Name) and \
-           call.func.value.id == 'props':
+                isinstance(call.func.value, ast.Name) and \
+                call.func.value.id == 'props':
             col_name = call.args[0].s
             if "'" in col_name:
                 raise RuntimeError("Tag/column name cannot contain "
@@ -537,22 +534,21 @@ class GeomTypeTransformer(ast.NodeTransformer):
         cmps = cp.comparators
 
         if isinstance(left, ast.Attribute) and \
-           isinstance(left.value, ast.Name) and \
-           left.value.id == 'shape' and \
-           left.attr == 'type':
+                isinstance(left.value, ast.Name) and \
+                left.value.id == 'shape' and \
+                left.attr == 'type':
             call = ast.Call(
                 ast.Name('ST_GeometryType', ast.Load()),
                 [ast.Name('shape', ast.Load())],
-                [], None, None)
+                [])
             left = ast.copy_location(call, left)
             renamer = GeomNameTransformer()
-            cmps = map(renamer.visit, cmps)
+            cmps = list(map(renamer.visit, cmps))
 
         return ast.copy_location(ast.Compare(left, ops, cmps), cp)
 
 
 class GeomNameTransformer(ast.NodeTransformer):
-
     GEOM_TYPES = {
         'Point': 'ST_Point',
         'MultiPoint': 'ST_MultiPoint',

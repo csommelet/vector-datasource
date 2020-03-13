@@ -8,7 +8,6 @@ import os.path
 import sys
 import yaml
 
-
 # this captures the end result of processing a layer's yaml
 # layer: name of layer
 # ast: ast parsed function
@@ -38,7 +37,7 @@ def parse_case(ast_state, orig):
         return expr
 
     if len(c) > 1:
-        if c[-1].keys() == ['else']:
+        if list(c[-1].keys()) == ['else']:
             last = c.pop()
             expr = ast_value(ast_state, last['else'])
 
@@ -64,7 +63,7 @@ def parse_call(ast_state, c):
     while func_parts:
         attr = func_parts.pop(0)
         name = ast.Attribute(value=name, attr=attr, ctx=ast.Load())
-    return ast.Call(name, args_ast, [], None, None)
+    return ast.Call(name, args_ast, [])
 
 
 def parse_clamp(ast_state, c):
@@ -79,12 +78,12 @@ def parse_clamp(ast_state, c):
     inner = ast.Call(
         ast.Name('min', ast.Load()),
         [max_val, value],
-        [], None, None)
+        [])
 
     return ast.Call(
         ast.Name('max', ast.Load()),
         [min_val, inner],
-        [], None, None)
+        [])
 
 
 def parse_sum(ast_state, orig):
@@ -120,7 +119,7 @@ def parse_lookup(ast_state, l):
 
     # only support >=, <= for now
     assert l['op'] in _KNOWN_OPS, '%r is not one of %r known binary ' \
-        'operators' % (l['op'], _KNOWN_OPS.keys())
+                                  'operators' % (l['op'], _KNOWN_OPS.keys())
     op = _KNOWN_OPS[l['op']]()
 
     default = ast_value(ast_state, l.get('default'))
@@ -146,7 +145,7 @@ def parse_func(ast_state, name, m):
 
     return ast.Call(
         ast.Name(name, ast.Load()),
-        args, [], None, None)
+        args, [])
 
 
 def parse_mul(ast_state, orig):
@@ -170,31 +169,33 @@ def ast_value(ast_state, val):
     if isinstance(val, str):
         return ast.Str(val)
     elif isinstance(val, dict):
-        if val.keys() == ['col']:
+        if list(val.keys()) == ['col']:
             return ast_column(ast_state, val['col'])
-        elif val.keys() == ['expr']:
+        elif list(val.keys()) == ['expr']:
             raise Exception('expr not supported in %r' % val)
-        elif val.keys() == ['lit']:
+        elif list(val.keys()) == ['lit']:
             raise Exception('literal SQL not supported in %r' % val)
-        elif 'case' in val.keys():
+        elif 'case' in list(val.keys()):
             return parse_case(ast_state, val['case'])
-        elif val.keys() == ['call']:
+        elif list(val.keys()) == ['call']:
             return parse_call(ast_state, val['call'])
-        elif val.keys() == ['clamp']:
+        elif list(val.keys()) == ['clamp']:
             return parse_clamp(ast_state, val['clamp'])
-        elif val.keys() == ['sum']:
+        elif list(val.keys()) == ['sum']:
             return parse_sum(ast_state, val['sum'])
-        elif val.keys() == ['lookup']:
+        elif list(val.keys()) == ['lookup']:
             return parse_lookup(ast_state, val['lookup'])
-        elif val.keys() == ['min']:
+        elif list(val.keys()) == ['min']:
             return parse_func(ast_state, 'min', val['min'])
-        elif val.keys() == ['max']:
+        elif list(val.keys()) == ['max']:
             return parse_func(ast_state, 'max', val['max'])
-        elif val.keys() == ['mul']:
+        elif list(val.keys()) == ['mul']:
             return parse_mul(ast_state, val['mul'])
         else:
             return ast.Dict([ast_value(ast_state, k) for k in val.keys()],
                             [ast_value(ast_state, v) for v in val.values()])
+    elif isinstance(val, bool):
+        return ast.NameConstant(val)
     elif isinstance(val, (int, float)):
         return ast.Num(val)
     elif hasattr(val, 'as_ast') and callable(val.as_ast):
@@ -243,7 +244,7 @@ def ast_column(ast_state, col):
                 'get',
                 ast.Load()),
             [ast.Str(col)],
-            [], None, None)
+            [])
     return result
 
 
@@ -360,7 +361,7 @@ class GeomTypeRule(object):
             ast.Load()
         )
         geom_types = map_geom_type(self.geom_type)
-        geom_types_ast = map(ast.Str, geom_types)
+        geom_types_ast = list(map(ast.Str, geom_types))
         result = ast.Compare(
             attr, [ast.In()], [ast.Tuple(geom_types_ast, ast.Load())])
         return result
@@ -372,7 +373,7 @@ def create_rules_from_branch(filter_level, combinator=AndRule):
     if not isinstance(filter_level, list):
         filter_level = [filter_level]
     for filter_level_item in filter_level:
-        for k, v in filter_level_item.items():
+        for k, v in sorted(filter_level_item.items()):
             rule = create_filter_rule(k, v)
             rules.append(rule)
     assert rules, 'No rules specified in level: %s' % filter_level
@@ -435,7 +436,7 @@ def create_matcher(yaml_datum, output_fn):
     if not isinstance(filters, list):
         filters = [filters]
     for f in filters:
-        for k, v in f.items():
+        for k, v in sorted(f.items()):
             rule = create_filter_rule(k, v)
             rules.append(rule)
     assert rules, 'No filter rules found in %s' % yaml_datum
@@ -460,7 +461,7 @@ def make_way_area_assignment():
                 value=ast.Name(id='util', ctx=ast.Load()),
                 attr='calculate_way_area', ctx=ast.Load()),
             args=[ast.Name(id='shape', ctx=ast.Load())],
-            keywords=[], starargs=None, kwargs=None))
+            keywords=[]))
 
 
 def make_volume_assignment():
@@ -475,7 +476,7 @@ def make_volume_assignment():
             args=[
                 ast.Name(id='way_area', ctx=ast.Load()),
                 ast.Name(id='props', ctx=ast.Load())],
-            keywords=[], starargs=None, kwargs=None))
+            keywords=[]))
 
 
 def make_zoom_assignment():
@@ -489,7 +490,7 @@ def make_zoom_assignment():
                 attr='calculate_1px_zoom', ctx=ast.Load()),
             args=[
                 ast.Name(id='way_area', ctx=ast.Load())],
-            keywords=[], starargs=None, kwargs=None))
+            keywords=[]))
 
 
 def parse_layer_from_yaml(
@@ -514,15 +515,25 @@ def parse_layer_from_yaml(
     stmts = prepend_statements + stmts
 
     func = ast.FunctionDef(
-        fn_name,
-        ast.arguments([
-            ast.Name('shape', ast.Param()),
-            ast.Name('props', ast.Param()),
-            ast.Name('fid', ast.Param()),
-            ast.Name('meta', ast.Param()),
-        ], None, None, []),
-        stmts,
-        [])
+        name=fn_name,
+        args=ast.arguments(
+            posonlyargs=[],
+            args=[
+                ast.arg('shape'),
+                ast.arg('props'),
+                ast.arg('fid'),
+                ast.arg('meta'),
+            ],
+            vararg=None,
+            kwonlyargs=[],
+            kw_defaults=[],
+            kwarg=None,
+            defaults=[]
+        ),
+        body=stmts,
+        decorator_list=[],
+        returns=None,
+        type_comment=None)
     return func
 
 
@@ -563,11 +574,10 @@ class FilterCompiler(object):
         ast_state = make_empty_ast_state()
         ast_fn = parse_layer_from_yaml(
             ast_state, matchers, fn_name)
-
-        mod = ast.Module([ast_fn])
+        mod = ast.Module(body=[ast_fn], type_ignores=[])
         mod_with_linenos = ast.fix_missing_locations(mod)
         code = compile(mod_with_linenos, '<string>', 'exec')
-        exec code in self.scope
+        exec(code, self.scope)
         compiled_fn = self.scope[fn_name]
 
         return ast_fn, compiled_fn
@@ -587,7 +597,7 @@ def parse_layers(yaml_path, output_fn, fn_name_fn):
     for layer in layers:
         file_path = os.path.join(yaml_path, '%s.yaml' % layer)
         with open(file_path) as fh:
-            yaml_data = yaml.load(fh)
+            yaml_data = yaml.load(fh, Loader=yaml.FullLoader)
 
         matchers = []
         for yaml_datum in yaml_data['filters']:
@@ -647,7 +657,7 @@ def output_kind(yaml_datum):
 
 def output_min_zoom(yaml_datum):
     min_zoom = yaml_datum['min_zoom']
-    assert not isinstance(min_zoom, (str, unicode)), \
+    assert not isinstance(min_zoom, str), \
         "Min zoom cannot be a string in %r." % yaml_datum
     return min_zoom
 
@@ -682,12 +692,12 @@ def main(argv=None):
         all_layer_data.append(layer_parse_result.layer_data)
 
     for import_ast in layer_parse_result.import_asts:
-        print formatter.format(import_ast, mode='exec')
+        print(formatter.format(import_ast, mode='exec'))
 
     for layer_data in all_layer_data:
         for layer_datum in layer_data:
             ast_fn = layer_datum.ast
-            print formatter.format(ast_fn, mode='exec')
+            print(formatter.format(ast_fn, mode='exec'))
 
 
 if __name__ == '__main__':

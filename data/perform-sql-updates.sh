@@ -31,7 +31,7 @@ trap "{ rm -rf $tmpdir; }" EXIT
 # will now be picked up by `set -e` and fail the script, whereas piping it
 # into psql  would have given the illusion of success.
 pushd ../vectordatasource/meta
-python sql.py > $sqlfile
+python3 sql.py > $sqlfile
 popd
 psql $PSQLOPTS  -f $sqlfile $@
 echo "done."

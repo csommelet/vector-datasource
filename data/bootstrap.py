@@ -4,7 +4,7 @@ import yaml
 import urllib
 
 with open('assets.yaml') as fh:
-    asset_cfg = yaml.load(fh)
+    asset_cfg = yaml.load(fh, Loader=yaml.FullLoader)
 
 dest_prj = asset_cfg.get('prj', 3857)
 bucket = asset_cfg['bucket']
@@ -101,14 +101,14 @@ for cfg_shapefile in cfg_shapefiles:
 WIKIDATA_BASE_QUERY = 'https://query.wikidata.org/sparql'
 queries = []
 for cfg_query in cfg_wikidata_queries:
-    url = WIKIDATA_BASE_QUERY + '?' + urllib.urlencode(
+    url = WIKIDATA_BASE_QUERY + '?' + urllib.parse.urlencode(
         dict(query=cfg_query['query'], format='json'))
     fname = cfg_query['name'] + '.json'
     queries.append(dict(url=url, output_file=fname))
 
 # turn the map into a list of dicts, makes it easier to handle in jinja2
 downloads = []
-for tgt, url in urls_to_download.iteritems():
+for tgt, url in urls_to_download.items():
     downloads.append(dict(tgt=tgt, url=url))
 
 src_shapefile_zips_str = ' '.join(src_shapefile_zips)
