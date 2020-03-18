@@ -1,18 +1,17 @@
-FROM ubuntu:14.04
+FROM ubuntu:20.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 # install osm2pgsql build deps
 RUN apt-get update \
  && apt-get -y install software-properties-common \
- && apt-add-repository -y ppa:tilezen \
  && apt-get update \
  && apt-get -y install \
+    python2.7 \
     libpq-dev \
     osm2pgsql \
-    python \
     libxml2-dev \
     libxslt1-dev \
     postgresql-client \
-    python-dev \
     python-jinja2 \
     python-yaml \
     python-pip \
@@ -24,7 +23,7 @@ RUN apt-get update \
 
 COPY . /usr/src/app
 WORKDIR /usr/src/app
-RUN pip install -r requirements.txt
-RUN pip install -e .
+RUN pip2 install -r requirements.txt
+RUN pip2 install -e .
 
 CMD ["/bin/bash", "scripts/docker_boostrap.sh"]
